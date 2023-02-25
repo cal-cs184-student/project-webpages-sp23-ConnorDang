@@ -1,7 +1,340 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 2 here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>
+  body {
+    background-color: white;
+    padding: 100px;
+    width: 1000px;
+    margin: auto;
+    text-align: left;
+    font-weight: 300;
+    font-family: 'Open Sans', sans-serif;
+    color: #121212;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Source Sans Pro', sans-serif;
+  }
+  kbd {
+    color: #121212;
+  }
+</style>
+<title>CS 184 Mesh Edit</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']]
+    }
+  };
+</script>
+<script id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+</script>
+
+</head>
+
+
+<body>
+
+<h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2018</h1>
+<h1 align="middle">Project 2: Mesh Edit</h1>
+<h2 align="middle">Connor Dang</h2>
+
+<br><br>
+
+<div>
+
+<h2 align="middle">Overview</h2>
+<p>
+  In this project, students explored various algorithms for modeling curves and 3D objects. In section 1, students worked with de Casteljau’s algorithms for interpolating Bezier curves with 2D points and Bezier surfaces given control points in 3D. In section 2, students worked with meshes and explored the Halfedge data structure for use in various mesh computations and operations including vertex normal computation and mesh upscaling using loop subdivision.
+</p>
+<br>
+
+
+<h2 align="middle">Section I: Bezier Curves and Surfaces</h2>
+
+<h3 align="middle">Part 1: Bezier Curves with 1D de Casteljau Subdivision</h3>
+
+<p>
+  In this part, students were introduced to de Casteljau’s algorithm and were instructed to implement the algorithm in the 1D case. De Casteljau’s algorithm is a recursive method used to evaluate a single point defined by a set of Bezier curve control points. The algorithm operates on a list of control points and a value t, between 0 and 1. The value t is used to determine the point on the final curve we wish to evaluate, with 0 representing the beginning of the curve and 1 representing the end. 
+<br><br>
+Between each pair of points, an intermediate point is placed - computed via linear interpolation of the 2 points and t. The process is then repeated on the intermediate points generated in the previous step until there is only 1 resulting point. This is the evaluated point on the curve.
+<br><br>
+The above algorithm can be easily implemented in code. I used a for loop to iterate through each pair of points to compute the intermediate point which was pushed to the end of a vector. Because the evaluateStep() function is used to compute only a single step of the algorithm, I simply return the vector containing the computed intermediate points.
+</p>
+<br>
+
+
+<b>Below is a step-by-step evaluation of a single Bezier curve point using de Casteljau subdivision for a curve defined by 6 control points.</b>
+<!-- Example of including a single figure -->
+
+<div align="middle">
+  <img src="1-1.png" align="middle" width="50%">
+  <figcaption>Fig.1 Control points and resulting Bezier curve.</figcaption>
+</div>
+<br>
+
+
+<div align="middle">
+  <table>
+    <tr>
+      <td>
+        <img src="1-2.png" align="middle" width="400px"/>
+        <figcaption align="middle">Fig.1-1 A single step of de Casteljau subdivision.</figcaption>
+      </td>
+      <td>
+        <img src="1-3.png" align="middle" width="400px"/>
+        <figcaption align="middle">Fig.1-2 Step 2 of de Casteljau subdivision.</figcaption>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <img src="1-4.png" align="middle" width="400px"/>
+        <figcaption align="middle">Fig.1-3 Step 3 of de Casteljau subdivision.</figcaption>
+      </td>
+      <td>
+        <img src="1-5.png" align="middle" width="400px"/>
+        <figcaption align="middle">Fig.1-4 Step 4 of de Casteljau subdivision.</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<div align="middle">
+  <img src="1-6.png" align="middle" width="45%">
+  <figcaption>Fig.1-5 Step 5 of de Casteljau subdivision.</figcaption>
+</div>
+<br>
+<b>Screenshot of a slightly different Bezier curve made by moving the original control points around and modifying the parameter \(t\) is shown below.</b>
+<div align="middle">
+  <img src="1-7.png" align="middle" width="50%">
+  <figcaption>Fig.1-6 Different 6 control point Bezier curve.</figcaption>
+</div>
+<br><br>
+
+
+
+
+<h3 align="middle">Part 2: Bezier Surfaces with Separable 1D de Casteljau</h3>
+<p>
+  In this part, students were instructed to generalize de Casteljau’s algorithm to compute Bezier surface points. De Casteljau’s algorithm intuitively extends to Bezier surfaces when provided with a “grid” of 3D Bezier control points instead of a list of 2D coordinates. We compute a Bezier curve point using de Casteljau’s algorithm for each “row” of points and compute the Bezier surface point using de Casteljau’s algorithm on the resulting set of Bezier curve points.
+<br><br>
+This process was implemented using 3 functions:
+</p>
+<b>
+BezierPatch::evaluateStep()
+</b>
+<p>
+Similar to evaluateStep() from the previous function, evaluates a single iteration of de Casteljau’s algorithm using a for loop. Although the points in this function are 3D, the intermediate points are still computed using linear interpolation.
+</p>
+<b>
+BezierPatch::evaluate1D()
+</b>
+<p>
+This function computes the Bezier curve point given a list of control points and a parameter t. The function accomplishes this by repeatedly calling BezierPatch::evaluateStep() until only a single intermediate point is returned. This point is the evaluated curve point.
+</p>
+<b>
+BezierPatch::evaluate()
+</b>
+<p>
+This function computes the Bezier surface point given a 2D grid of control points and a 2D parameter (u,v). For each row of control points, a Bezier curve point is computed using evaluate1D() and parameter u. To compute the final surface point, we call evaluate1D() on the computed Bezier curve points with parameter v.
+</p>
+<br>
+
+
+<b>
+  Screenshot of bez/teapot.bez evaluated by my implementation of Bezier surfaces.
+</b>
+<div align="middle">
+  <img src="2-1.png" align="middle" width="70%">
+  <figcaption>Fig.2 Teapot!</figcaption>
+</div>
+<br><br>
+
+
+<h2 align="middle">Section II: Triangle Meshes and Half-Edge Data Structure</h2>
+
+<h3 align="middle">Part 3: Area-Weighted Vertex Normals</h3>
+<p>
+  In this part, students were instructed to implement area-weighted vertex normals which are used to render smoother shading effects. To implement this, I iterate over each adjacent face of the given vertex and compute the sum of all of the face normal vectors weighted by their respective area (computed via the cross product method ||AB x AC|| / 2). Finally, I scale the weighted sum vector such that it is a unit vector and return.
+</p>
+<br>
+
+<div align="middle">
+  <table>
+    <tr>
+      <td>
+        <img src="3-1.png" align="middle" width="500px"/>
+        <figcaption align="middle">Fig.3-1 Teapot shading without vertex normals. <br>Default flat shading.</figcaption>
+      </td>
+      <td>
+        <img src="3-2.png" align="middle" width="500px"/>
+        <figcaption align="middle">Fig.3-2 Teapot shading with vertex normals.<br>Phong shading.</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<br><br>
+
+
+<h3 align="middle">Part 4: Edge Flip</h3>
+<p>
+  In this part, students were instructed to implement the edge-flip mesh operation (to be used later in part 6). Implementing this operation required a lot of pointer manipulation and reassignment and careful traversal of the Halfedge data structure. I designated the respective Halfedges corresponding to the provided edge as h0 and t0. My first step involved reassigning h0 vertex’s Halfedge and t0 vertex’s Halfedge to be a different coincident halfedge to ensure consistency before “flipping” the edge. Next, I perform the flip by reassigning h0’s vertex and t0’s vertex. Finally, I stitch all of the mesh components together by updating next and face pointers. To help with implementation, I created a variable for each halfedge in the 2 affected triangles - to avoid having to traverse the mesh before all of its pointers are correctly updated.
+  <br><br>
+  Initially, there were some bugs with the implementation, but these were solved by fully redefining all of the relevant pointers. After correctness was achieved, I removed unnecessary pointer assignments.
+</p>
+<br>
+
+
+<b>
+  Screenshots before and after edge-flip operations.
+</b>
+<div align="middle">
+  <table>
+    <tr>
+      <td>
+        <img src="4-1.png" align="middle" width="500px"/>
+        <figcaption align="middle">Fig.4-1 Original teapot mesh.</figcaption>
+      </td>
+      <td>
+        <img src="4-2.png" align="middle" width="500px"/>
+        <figcaption align="middle">Fig.4-2 Teapot mesh with some edge flips.</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<br><br>
+
+
+<h3 align="middle">Part 5: Edge Split</h3>
+<p>
+  In this part, students were instructed to implement the edge-split operation (to be used later in part 6). Similar to the edge-flip operation, this implementation required many pointer updates, but also required adding mesh components. To implement this, I first created and added a midpoint to the mesh at the halfway point on the specified edge. Then, using a for loop, I formed each of the resulting “quadrants” formed by the edge split using one of the 4 non-impacted edges (the edges of the 2 original triangles that are not being split) as a basis for each quadrant. Finally, I create new edges and connect them with the appropriate Halfedges.
+<br><br>
+Initially, I experienced bugs with this algorithm because I had achieved the edge-split operation by creating new Halfedges, faces, and vertices for each quadrant and deleting the old unused structures. This caused a multitude of memory problems and bad accesses. To fix this, I updated the algorithm to reuse old faces, edges, and Halfedges and to only create new structures when necessary.
+</p>
+<br>
+
+<div align="middle">
+  <table>
+    <div align="middle">
+      <img src="5-1.png" align="middle" width="50%">
+      <figcaption>Fig.5-1 Original cube mesh.</figcaption>
+    </div>
+    <br><br>
+    <tr>
+      <td>
+        <img src="5-2.png" align="middle" width="400px"/>
+        <figcaption align="middle">Fig.5-2 Cube mesh with some edge splits.</figcaption>
+      </td>
+      <td>
+        <img src="5-3.png" align="middle" width="400px"/>
+        <figcaption align="middle">Fig.5-3 Cube mesh with edge splits and edge flips.</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<br><br>
+
+
+<h3 align="middle">Part 6: Loop Subdivision for Mesh Upsampling</h3>
+<p>
+  In this final part, students were instructed to implement the loop subdivision algorithm for upsampling meshes.
+<br><br>
+First, I iterated through each vertex point and computed its new position and placed this value in the newPosition member of each vertex object. Next, I iterated through each edge, computing the positions for the future new vertices that would eventually split said edge. With the position computation complete, I split each edge in the mesh and flip edges connecting old and new vertices to achieve a 4-1 subdivision for each triangle. Finally, I iterate through all of the vertices and update their positions based on the computed values from the beginning of the algorithm.
+<br><br>
+This algorithm also involved making some changes to the edge-split operation in part 5. The new vertex resulting from the split was flagged as new. The vertex was also assigned a ‘newPosition’ - inherited from the ‘newPosition’ member of the edge it split. Finally, the algorithm was updated to flag edges perpendicular to the split edge as ‘new’.
+<br><br>
+The implementation process for this part was fairly straightforward with correct implementations of parts 4 and 5 and did not have any notable bugs.
+</p>
+<br>
+
+
+<b>
+  Icosahedron:  Original vs. Subdivision
+</b>
+<div align="middle">
+  <table>
+    <tr>
+      <td>
+        <img src="6-1.png" align="middle" width="400px"/>
+        <figcaption align="middle">Fig.6-1 Original icosahedron mesh.</figcaption>
+      </td>
+      <td>
+        <img src="6-2.png" align="middle" width="400px"/>
+        <figcaption align="middle">Fig.6-2 Icosahedron after mesh upsampling.</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<br>
+<p>
+  An interesting phenomena to note is that the very sharp corners of the icosahedron are greatly "attenuated" and become rounded very quickly. However, by pre-splitting edges around the sharp corner areas we observe that we can somewhat maintain the sharp vertex during the mesh upsampling.
+</p>
+<div align="middle">
+  <div>
+    <img src="6-3.png" align="middle" width="400px"/>
+    <figcaption align="middle">Fig.6-3 Icosahedron with pre-split edges.</figcaption>
+  </div>
+  <table>
+    <tr>
+      <td>
+        <img src="6-4.png" align="middle" width="400px"/>
+        <figcaption align="middle">Fig.6-4 Icosahedron after mesh upsampling.</figcaption>
+      </td>
+      <td>
+        <img src="6-5.png" align="middle" width="400px"/>
+        <figcaption align="middle">Fig.6-5 Upsampled icosahedron from different angle.</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<br><br>
+
+<b>
+  Cube:  Original vs. Subdivision
+</b>
+<div align="middle">
+  <table>
+    <tr>
+      <td>
+        <img src="6-6.png" align="middle" width="400px"/>
+        <figcaption align="middle">Fig.6-6 Original cube mesh.</figcaption>
+      </td>
+      <td>
+        <img src="6-7.png" align="middle" width="400px"/>
+        <figcaption align="middle">Fig.6-7 Cube after mesh upsampling.</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<br>
+<p>
+  Despite the fact that the cube is a symmetric object, it becomes slightly asymmetric after upsampling. This is because the faces of the cube are constructed with 2 triangles leading to uneven triangle subdivision of the faces. By pre-splitting these edges, we can form 4 equal triangles for each face, uniformly symmetric across all the faces. This results in a more symmetric mesh upsampling.
+</p>
+<div align="middle">
+  <div>
+    <img src="6-8.png" align="middle" width="400px"/>
+    <figcaption align="middle">Fig.6-8 Cube with pre-split edges.</figcaption>
+  </div>
+  <table>
+    <tr>
+      <td>
+        <img src="6-9.png" align="middle" width="400px"/>
+        <figcaption align="middle">Fig.6-9 Cube after mesh upsampling.</figcaption>
+      </td>
+      <td>
+        <img src="6-10.png" align="middle" width="400px"/>
+        <figcaption align="middle">Fig.6-10 Upsampled cube from different angle.</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+</body>
 </html>
