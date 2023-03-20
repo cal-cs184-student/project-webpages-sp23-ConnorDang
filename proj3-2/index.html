@@ -1,7 +1,212 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 3-2 here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+  <style>
+    body {
+      background-color: white;
+      padding: 100px;
+      width: 1000px;
+      margin: auto;
+      text-align: left;
+      font-weight: 300;
+      font-family: 'Open Sans', sans-serif;
+      color: #121212;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4 {
+      font-family: 'Source Sans Pro', sans-serif;
+    }
+
+    kbd {
+      color: #121212;
+    }
+  </style>
+  <title>CS 184 Path Tracer</title>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+
+  <script>
+    MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']]
+      }
+    };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+  </script>
+
+</head>
+
+
+<body>
+
+  <h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2023</h1>
+  <h1 align="middle">Project 3-2: Path Tracer - Additional Features </h1>
+  <h2 align="middle">Connor Dang</h2>
+
+  <!-- Add Website URL -->
+  <h2 align="middle">TODO: <a href="https://cal-cs184-student.github.io/project-webpages-sp23-ConnorDang/proj3-1/index.html">GitHub Pages</a></h2>
+
+
+  <br><br>
+      <h2 align="middle">Overview</h2>
+	  <p>In this project, I worked on adding some interesting features to Path Tracer (from Project 3-1). Students were given the option to implement advanced material models, environment lights, and depth of field features to expand on Path Tracer's underlying engine. I chose to work on adding support for mirror, glass, and microfacet materials - allowing Path Tracer to render realistic metal and glass surfaces. Additionally, I worked on implementing a thin lens model to add depth of field effects to the render camera. Implementation of the material models was straightforward and required modeling complex light behaviors using math - an aspect that was extremely simplified when implementing diffuse materials in the previous project. On the other hand, adding depth of field effects to the renderer did not require as much math, but required me to rethink the way the virtual camera, framebuffer, and scene interact with each other.</p>
+
+
+
+  <br><br>
+      <h2 align="middle">Part 1: Mirror and Glass Materials </h2>
+
+      <p>
+        In this section, I implemented Mirror and Glass effects. Below is a sequence of renders with ‘max_ray_depth’ set to 0, 1, 2, 3, 4, 5, and 100 for CBspheres.dae. The renders were done with 1024 samples per pixels and 8 samples per light. The sphere on the left is a perfect mirror material and the sphere on the right is glass.
+      </p>
+      <br>
+
+      <h3>
+        Renders:
+      </h3>
+      <div align="middle">
+        <table style="width:100%">
+          <tr align="center">
+            <td>
+              <img src="part1/balls-0.png" align="middle" width="400px" />
+              <figcaption>max_ray_depth = 0</figcaption>
+            </td>
+            <td>
+              <img src="part1/balls-1.png" align="middle" width="400px" />
+              <figcaption>max_ray_depth = 1</figcaption>
+            </td>
+          </tr>
+		  <tr align="center">
+            <td>
+              <img src="part1/balls-2.png" align="middle" width="400px" />
+              <figcaption>max_ray_depth = 2</figcaption>
+            </td>
+            <td>
+              <img src="part1/balls-3.png" align="middle" width="400px" />
+              <figcaption>max_ray_depth = 3</figcaption>
+            </td>
+          </tr>
+		  <tr align="center">
+            <td>
+              <img src="part1/balls-4.png" align="middle" width="400px" />
+              <figcaption>max_ray_depth = 4</figcaption>
+            </td>
+            <td>
+              <img src="part1/balls-5.png" align="middle" width="400px" />
+              <figcaption>max_ray_depth = 5</figcaption>
+            </td>
+          </tr>
+        </table>
+		<div>
+			<img src="part1/balls-100.png" align="middle" width="400px" />
+			<figcaption>max_ray_depth = 100</figcaption>
+		</div>
+      </div>
+      <br>
+	  <h3>Observations: </h3>
+	  <p>
+		At no bounces of light, we only see the light source in the rendered image - this result is consistent to what was observed in the previous project.
+		<br><br>With direct illumination (max_ray_depth = 1), we are able to see the form of the spheres and the room. Although the walls are colored, the balls are completely dark except for the specular reflections from the light. This phenomenon is observed because both the visual appearance of the glass and the mirror materials are dependent on the other features of the scene. Because we have constrained the image to direct illumination, the features of the scene cannot be captured on the spheres.
+		<br><br>At max_ray_depth = 2, we notice that the ceiling is lit and there is color bleeding in the shadows of the spheres - results consistent to what we have seen in the previous project. Additionally, we can see that the spheres now have reflections! WIth the extra bounce, light is able to bounce from other objects onto the spheres allowing us to see the scene reflected on the surface of the spheres. However, the glass sphere on the right seems to be dark with a slight reflection. This occurs because the refracted rays of light have passed through the surface of the glass ball but have not yet bounced back towards the camera. Thus, we can only see the slight scene reflection on the glass sphere’s surface.
+		<br><br>At max_ray_depth=3, the glass ball now is clear! With enough light bounces, we allow the rays that are refracted on the surface of the ball to bounce to the camera which create the clear effect on the ball. However, the image is still far from correct - the glass ball on the surface of the mirrored ball is dark and there are still some strange shadows around the edge of the glass sphere. This is caused because we need an additional bounce of light to simulate the light passing through the ball and off of the mirror ball.
+		<br><br>At max_ray_depth = 4, we have the correct reflections of the glass ball on the face of the mirror ball. Additionally the light beneath the glass ball has now bounced back to illuminate the bottom of the sphere.
+		<br><br>At max_ray_depth = 5 and 100, we observe no more features in the scene. However, with more ray bounces, the scene does get slightly brighter. This is the result of the light level in the scene converging.
+	  </p>
+	  <br><br>
+
+
+
+
+
+
+	  <h1>ANYTHING BELOW THIS IS GARBAGE: </h1>
+      <h2 align="middle">Part 4: Depth of Field</h2>
+
+      <p>
+		In this part, I worked on implementing the thin lens model to simulate the depth of field effect for the virtual camera. In the previous project, I implemented a pin-hole camera - where we trace rays directly from the camera (at a fixed point) through the framer buffer and out into the scene. This results in rendering where every object in the scene is in focus. To simulate depth of field, we create a thin lens model where the sampling position is no longer fixed. Instead, for each pixel, we uniformly sample positions on the lens and instead trace rays and sample from those positions out towards the scene. We then use those samples to construct an estimation for the pixel. Similar to the pin-hole camera, the estimation will converge with enough samples. The main feature of the thin lens model that differentiates it from the pin-hole model is the notion of the ‘plane of focus’ - a plane in 3D space that represents the depth at which the scene will be in focus. This plane is defined by the focal distance of the lens and is used to determine how a ray from the pixel buffer is refracted as it passes through the lens. This refraction is what creates the blurring/focusing effect that is seen in the renders below. Pixels with sampled rays that have intersections before or after the plane of focus will appear to be “blurry” because it is receiving radiance from many, different intersection points.
+      </p>
+
+      <br>
+      <h3>
+        Focus Stack:
+      </h3>
+	  <p>Below I have rendered CBdragon.dae with a microfacet gold material, 128 samples per pixel, 4 light samples, and max_ray_depth = 4.
+		Additionally, each image below is rendered with a different focal distance - the plane of focus get progressively farther with each consecutive image.
+		</p>
+
+      <div align="middle">
+        <table style="width:100%">
+          <tr align="center">
+            <td>
+              <img src="part4/fd_4.4.png" align="middle" width="400px" />
+              <figcaption>Focal distance of 4.4</figcaption>
+            </td>
+          </tr>
+          <tr align="center">
+            <td>
+              <img src="part4/fd_4.6.png" align="middle" width="400px" />
+              <figcaption>Focal distance of 4.6</figcaption>
+            </td>
+          </tr>
+          <tr align="center">
+            <td>
+              <img src="part4/fd_4.8.png" align="middle" width="400px" />
+              <figcaption>Focal distance of 4.8</figcaption>
+            </td>
+          </tr>
+		  <tr align="center">
+            <td>
+              <img src="part4/fd_5.0.png" align="middle" width="400px" />
+              <figcaption>Focal distance of 5.0</figcaption>
+            </td>
+          </tr>
+        </table>
+      </div>
+      <br>
+
+	  <h3>
+        Aperature sizes:
+      </h3>
+	  <p>Below I have rendered CBdragon.dae with the same settings as above except with the focal distance fixed at 4.6.
+		Instead, each image below is rendered with a different lens radius or aperture.
+		</p>
+
+      <div align="middle">
+        <table style="width:100%">
+          <tr align="center">
+            <td>
+              <img src="part4/r_.22.png" align="middle" width="400px" />
+              <figcaption>Lens radius of 0.22</figcaption>
+            </td>
+          </tr>
+          <tr align="center">
+            <td>
+              <img src="part4/r_.32.png" align="middle" width="400px" />
+              <figcaption>Lens radius of 0.32</figcaption>
+            </td>
+          </tr>
+          <tr align="center">
+            <td>
+              <img src="part4/r_.42.png" align="middle" width="400px" />
+              <figcaption>Lens radius of 0.42 </figcaption>
+            </td>
+          </tr>
+		  <tr align="center">
+            <td>
+              <img src="part4/r_.52.png" align="middle" width="400px" />
+              <figcaption>Lens radius of 0.52 </figcaption>
+            </td>
+          </tr>
+        </table>
+      </div>
+      <br>
+
+
+</body>
+
 </html>
